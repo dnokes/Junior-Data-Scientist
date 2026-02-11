@@ -1,0 +1,134 @@
+---
+title: "CaRMS Program Insights"
+author: "Data Platform Team"
+format:
+  html:
+    toc: true
+    code-fold: true
+    df-print: paged
+execute:
+  echo: false
+  warning: false
+  message: false
+jupyter: python3
+---
+
+# Purpose
+Lightweight analytical slices on the public CaRMS program data, matching the gold-layer use cases (geography rollups, discipline mix, description similarity). All code runs locally with the raw extracts; no database required.
+
+# Setup
+```python
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import torch
+from sentence_transformers import SentenceTransformer
+
+# add repo root to path so we can reuse parsing helpers
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT))
+DATA_DIR = ROOT / "data"
+
+from carms.pipelines.silver.assets import derive_province  # reuse prod logic
+```
+
+# Province-level program density
+```python
+programs = pd.read_excel(DATA_DIR / "1503_program_master.xlsx").rename(columns=str.strip)
+programs["province"] = programs.apply(
+    lambda r: derive_province(r.program_site, r.school_name), axis=1
+)
+province_counts = (
+    programs.groupby("province")
+    .agg(programs=("program_stream_id", "count"))
+    .reset_index()
+    .sort_values("programs", ascending=False)
+)
+
+fig_province = px.bar(
+    province_counts,
+    x="province",
+    y="programs",
+    title="Programs per Province",
+    labels={"programs": "Programs", "province": "Province"},
+    color="programs",
+    color_continuous_scale="Reds",
+)
+fig_province.update_layout(height=420)
+fig_province
+```
+
+# Discipline mix
+```python
+discipline_counts = (
+    programs.groupby("discipline_name")
+    .agg(programs=("program_stream_id", "count"))
+    .reset_index()
+    .sort_values("programs", ascending=False)
+    .head(15)
+)
+
+fig_disc = px.bar(
+    discipline_counts,
+    x="programs",
+    y="discipline_name",
+    orientation="h",
+    title="Top Disciplines by Program Count",
+    labels={"programs": "Programs", "discipline_name": "Discipline"},
+    color="programs",
+    color_continuous_scale="OrRd",
+)
+fig_disc.update_layout(height=520, yaxis=dict(autorange="reversed"))
+fig_disc
+```
+
+# Description similarity (SentenceTransformer + cosine heatmap)
+```python
+desc = pd.read_csv(DATA_DIR / "1503_program_descriptions_x_section.csv")
+text_cols = [
+    "program_contracts",
+    "general_instructions",
+    "supporting_documentation_information",
+    "review_process",
+    "interviews",
+    "selection_criteria",
+    "program_highlights",
+    "program_curriculum",
+    "training_sites",
+    "additional_information",
+    "return_of_service",
+    "faq",
+    "summary_of_changes",
+]
+
+# concatenate available text fields per program
+desc["description_text"] = desc[text_cols].fillna("").agg("\n\n".join, axis=1)
+sample = (
+    desc[["program_description_id", "program_name", "description_text"]]
+    .dropna(subset=["description_text"])
+    .head(24)
+)
+
+torch.set_num_threads(1)
+model = SentenceTransformer("all-MiniLM-L6-v2")
+embeddings = model.encode(sample["description_text"].tolist(), normalize_embeddings=True)
+similarity = np.matmul(embeddings, embeddings.T)
+
+fig_sim = px.imshow(
+    similarity,
+    x=sample["program_name"],
+    y=sample["program_name"],
+    color_continuous_scale="Magma",
+    title="Description Similarity (cosine)",
+    labels=dict(color="cosine"),
+)
+fig_sim.update_layout(height=760)
+fig_sim
+```
+
+# How to render
+- HTML (recommended): `quarto render notebooks/insights.qmd --to html --output ../docs/insights.html`
+- PDF (optional, needs LaTeX): `quarto render notebooks/insights.qmd --to pdf`
