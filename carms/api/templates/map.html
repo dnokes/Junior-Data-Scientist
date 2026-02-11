@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CaRMS | Programs by Province</title>
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0d12;
+      --card: rgba(255,255,255,0.04);
+      --card-strong: rgba(255,255,255,0.08);
+      --stroke: rgba(255,255,255,0.12);
+      --text: #f4f6fb;
+      --muted: rgba(244,246,251,0.70);
+      --muted-2: rgba(244,246,251,0.55);
+      --accent: #ef4444;
+      --accent-2: #f97316;
+      --accent-3: #fde68a;
+      --pill: rgba(255,255,255,0.08);
+      --shadow: 0 18px 60px rgba(0,0,0,0.35);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: radial-gradient(120% 120% at 20% 20%, rgba(239,68,68,0.08), rgba(13,16,22,0)) ,
+                  radial-gradient(100% 110% at 80% 0%, rgba(249,115,22,0.07), rgba(10,13,18,0.02)) ,
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 32px 0 40px;
+    }
+
+    .wrap { max-width: 1220px; margin: 0 auto; padding: 0 22px; display: flex; flex-direction: column; gap: 16px; }
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      font-family: "IBM Plex Serif", "Times New Roman", serif;
+      font-size: 30px;
+      margin: 0 0 6px;
+      letter-spacing: -0.01em;
+    }
+
+    .sub { color: var(--muted); font-size: 14px; margin: 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    .chip { background: var(--pill); padding: 6px 10px; border-radius: 999px; font-size: 12px; color: var(--muted); border: 1px solid rgba(255,255,255,0.1); }
+
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    button {
+      cursor: pointer;
+      border: 1px solid var(--stroke);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 9px 14px;
+      font-size: 13px;
+      transition: all 0.18s ease;
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+    }
+    button:hover { border-color: rgba(255,255,255,0.28); background: var(--card-strong); transform: translateY(-1px); }
+    .btn-ghost { background: transparent; }
+    .btn-accent { background: linear-gradient(90deg, var(--accent), var(--accent-2)); border: none; color: #0a0d12; font-weight: 600; }
+    .btn-accent:hover { box-shadow: 0 10px 30px rgba(239,68,68,0.22); transform: translateY(-1px); }
+
+    .stat-bar {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 12px;
+    }
+    .stat {
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      backdrop-filter: blur(4px);
+    }
+    .stat-label { color: var(--muted-2); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+    .stat-value { font-size: 22px; font-weight: 700; }
+    .stat-note { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+    .map-shell {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .map-shell:before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(60% 60% at 50% 45%, rgba(255,255,255,0.06), rgba(10,13,18,0));
+      pointer-events: none;
+    }
+
+    .map-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      position: relative;
+      z-index: 1;
+    }
+
+    .toggle {
+      display: inline-flex;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .toggle button {
+      border: none;
+      border-right: 1px solid var(--stroke);
+      border-radius: 0;
+      background: transparent;
+      padding: 9px 14px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .toggle button:last-child { border-right: none; }
+    .toggle button.active { background: linear-gradient(90deg, rgba(239,68,68,0.18), rgba(249,115,22,0.18)); color: var(--text); }
+
+    .map-area {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(260px, 0.7fr);
+      gap: 14px;
+      align-items: stretch;
+      position: relative;
+      z-index: 1;
+    }
+    @media (max-width: 960px) {
+      .map-area { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: rgba(12,15,22,0.72);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      overflow: hidden;
+      position: relative;
+      height: 640px;
+    }
+    #plot { width: 100%; height: 100%; }
+
+    .info {
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      padding: 18px 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 180px;
+    }
+    .info h3 { margin: 0; font-size: 18px; }
+    .info .muted { color: var(--muted); font-size: 13px; margin: 0; }
+    .pill-stack { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pill { padding: 6px 10px; border-radius: 10px; background: var(--pill); border: 1px solid var(--stroke); font-size: 12px; color: var(--muted); }
+    .bar { width: 100%; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    .bar .fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); width: 0%; transition: width 0.25s ease; }
+
+    .legend-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      position: relative;
+      z-index: 1;
+    }
+    .legend {
+      flex: 1;
+      min-width: 260px;
+    }
+    .legend-bar {
+      height: 12px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #fef3eb 0%, #f7b799 35%, #f06449 70%, #b90f2b 100%);
+      border: 1px solid var(--stroke);
+      position: relative;
+      margin-bottom: 8px;
+    }
+    .ticks { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+    .legend-meta { color: var(--muted); font-size: 13px; display: flex; gap: 8px; align-items: center; }
+
+    .actions-secondary { display: flex; gap: 8px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header-row">
+      <div>
+        <h1>Residency Programs by Province</h1>
+        <p class="sub">
+          Choropleth view from the gold layer (province aggregation).
+          <span class="chip">Gold / geography summary</span>
+        </p>
+      </div>
+      <div class="actions">
+        <button id="download-csv" class="btn-ghost">Download CSV</button>
+        <button id="copy-link" class="btn-ghost">Copy link</button>
+        <button id="reset-view" class="btn-ghost">Reset view</button>
+        <button id="primary-action" class="btn-accent">View Data</button>
+      </div>
+    </div>
+
+    <div class="stat-bar">
+      <div class="stat">
+        <div class="stat-label">Total programs</div>
+        <div class="stat-value" id="stat-total">-</div>
+        <div class="stat-note" id="stat-total-note">Loading...</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Top province</div>
+        <div class="stat-value" id="stat-top">-</div>
+        <div class="stat-note" id="stat-top-note">-</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Median programs</div>
+        <div class="stat-value" id="stat-median">-</div>
+        <div class="stat-note" id="stat-median-note">-</div>
+      </div>
+    </div>
+
+    <div class="map-shell">
+      <div class="map-top">
+        <div class="toggle">
+          <button class="active" data-mode="choropleth">Choropleth</button>
+          <button data-mode="bubble">Bubble overlay</button>
+        </div>
+        <div class="actions-secondary">
+          <span class="legend-meta">Data refreshed: <strong id="refreshed-date">-</strong></span>
+        </div>
+      </div>
+
+      <div class="map-area">
+        <div class="card">
+          <div id="plot"></div>
+        </div>
+        <div class="info" id="detail-card">
+          <h3 id="detail-title">Hover a province</h3>
+          <p class="muted" id="detail-sub">Program count, rank, and share of national total appear here.</p>
+          <div class="pill-stack" id="detail-pills">
+            <span class="pill">-</span>
+          </div>
+          <div class="bar"><div class="fill" id="detail-bar"></div></div>
+        </div>
+      </div>
+
+      <div class="legend-row">
+        <div class="legend">
+          <div class="legend-bar"></div>
+          <div class="ticks">
+            <span>0</span><span>25</span><span>75</span><span>150</span><span>300+</span>
+          </div>
+        </div>
+        <div class="legend-meta">Programs color scale - darker = more programs</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fmt = new Intl.NumberFormat("en-CA");
+    const pct = new Intl.NumberFormat("en-CA", { style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const state = { mode: "choropleth", data: [], geojson: null, traces: null, layout: null, total: 0 };
+
+    const el = {
+      plot: document.getElementById("plot"),
+      modeButtons: document.querySelectorAll(".toggle button"),
+      detailTitle: document.getElementById("detail-title"),
+      detailSub: document.getElementById("detail-sub"),
+      detailPills: document.getElementById("detail-pills"),
+      detailBar: document.getElementById("detail-bar"),
+      statTotal: document.getElementById("stat-total"),
+      statTotalNote: document.getElementById("stat-total-note"),
+      statTop: document.getElementById("stat-top"),
+      statTopNote: document.getElementById("stat-top-note"),
+      statMedian: document.getElementById("stat-median"),
+      statMedianNote: document.getElementById("stat-median-note"),
+      refreshed: document.getElementById("refreshed-date"),
+      downloadCsv: document.getElementById("download-csv"),
+      copyLink: document.getElementById("copy-link"),
+      resetView: document.getElementById("reset-view"),
+      primaryAction: document.getElementById("primary-action")
+    };
+
+    async function fetchJSON(url) {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
+      return await r.json();
+    }
+
+    function buildStats(data) {
+      const total = data.reduce((s, d) => s + (d.programs ?? d.program_count ?? 0), 0);
+      const sorted = [...data].sort((a, b) => (b.programs ?? 0) - (a.programs ?? 0));
+      const top = sorted[0] || {};
+      const medIdx = Math.floor(sorted.length / 2);
+      const median = sorted.length ? sorted[medIdx].programs ?? 0 : 0;
+      el.statTotal.textContent = fmt.format(total);
+      el.statTotalNote.textContent = "Across all provinces";
+      el.statTop.textContent = top.name ? `${top.name}` : "-";
+      el.statTopNote.textContent = top.programs != null ? `${fmt.format(top.programs)} programs` : "No data";
+      el.statMedian.textContent = median ? fmt.format(median) : "-";
+      el.statMedianNote.textContent = "Median programs / province";
+      state.total = total;
+    }
+
+    function setDetail(d) {
+      if (!d) {
+        el.detailTitle.textContent = "Hover a province";
+        el.detailSub.textContent = "Program count, rank, and share of national total appear here.";
+        el.detailPills.innerHTML = `<span class="pill">-</span>`;
+        el.detailBar.style.width = "0%";
+        return;
+      }
+      const share = state.total ? (d.programs ?? 0) / state.total : 0;
+      el.detailTitle.textContent = `${d.name} (${d.province})`;
+      el.detailSub.textContent = `${fmt.format(d.programs ?? 0)} programs | ${pct.format(share)} of total`;
+      el.detailPills.innerHTML = `
+        <span class="pill">Rank #${d.rank}</span>
+        <span class="pill">${fmt.format(d.programs ?? 0)} programs</span>
+        <span class="pill">${pct.format(share)} share</span>
+      `;
+      el.detailBar.style.width = `${Math.min(100, share * 100)}%`;
+    }
+
+    function wireActions(data) {
+      el.downloadCsv.onclick = () => downloadCSV(data);
+      el.copyLink.onclick = async () => {
+        await navigator.clipboard.writeText(window.location.href);
+        el.copyLink.textContent = "Copied!";
+        setTimeout(() => (el.copyLink.textContent = "Copy link"), 1600);
+      };
+      el.resetView.onclick = () => resetView();
+      el.primaryAction.onclick = () => window.open("/map/data.json", "_blank");
+    }
+
+    function downloadCSV(data) {
+      const header = ["province", "name", "programs", "lat", "lon"];
+      const rows = data.map(d => header.map(k => d[k] ?? "").join(","));
+      const csv = [header.join(","), ...rows].join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "programs_by_province.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function attachHoverHandlers(traceData) {
+      el.plot.on("plotly_hover", (ev) => {
+        const d = ev.points?.[0]?.customdata;
+        if (d) setDetail(traceData.find(x => x.province === d.province));
+      });
+      el.plot.on("plotly_unhover", () => setDetail(null));
+    }
+
+    function updateMode(mode) {
+      state.mode = mode;
+      if (state.traces) {
+        Plotly.restyle("plot", { visible: [mode === "choropleth"] }, [0]);
+        Plotly.restyle("plot", { visible: [mode === "bubble"] }, [1]);
+      }
+      el.modeButtons.forEach(btn => btn.classList.toggle("active", btn.dataset.mode === mode));
+    }
+
+    function resetView() {
+      if (!state.layout) return;
+      Plotly.relayout("plot", {
+        "geo.center.lon": state.layout.geo.center.lon,
+        "geo.center.lat": state.layout.geo.center.lat,
+        "geo.projection": state.layout.geo.projection,
+        "geo.fitbounds": state.layout.geo.fitbounds,
+        "geo.scope": state.layout.geo.scope
+      });
+    }
+
+    function buildTraces(data, geojson) {
+      const programs = data.map(d => d.programs ?? d.program_count ?? 0);
+      const max = Math.max(...programs, 0);
+      const colorscale = [
+        [0, "#fef3eb"],
+        [0.35, "#f7b799"],
+        [0.70, "#f06449"],
+        [1, "#b90f2b"]
+      ];
+
+      const choropleth = {
+        type: "choropleth",
+        geojson,
+        featureidkey: "properties.province",
+        locations: data.map(d => d.province),
+        z: programs,
+        text: data.map(d => `${d.name} (${d.province})`),
+        customdata: data.map(d => ({ province: d.province, programs: d.programs ?? d.program_count ?? 0 })),
+        hovertemplate: "<b>%{text}</b><br>%{z} programs<extra></extra>",
+        marker: { line: { width: 0.6, color: "rgba(255,255,255,0.35)" } },
+        colorbar: { title: "Programs", tickcolor: "#d9dce6", tickfont: { color: "#d9dce6" }, bgcolor: "rgba(0,0,0,0)" },
+        colorscale,
+        zmin: 0,
+        zmax: Math.max(max, 50),
+        visible: state.mode === "choropleth"
+      };
+
+      const bubble = {
+        type: "scattergeo",
+        mode: "markers",
+        lat: data.map(d => d.lat),
+        lon: data.map(d => d.lon),
+        customdata: data.map(d => ({ province: d.province, programs: d.programs ?? d.program_count ?? 0 })),
+        text: data.map(d => `${d.name} (${d.province})`),
+        marker: {
+          size: data.map(d => Math.max(10, Math.sqrt(d.programs ?? 0) * 2.4)),
+          color: "#f97316",
+          opacity: 0.82,
+          line: { color: "#0a0d12", width: 1.4 },
+          sizemode: "area"
+        },
+        hovertemplate: "<b>%{text}</b><br>%{customdata.programs} programs<extra></extra>",
+        visible: state.mode === "bubble"
+      };
+
+      return [choropleth, bubble];
+    }
+
+    async function render() {
+      const [geojson, dataRaw] = await Promise.all([
+        fetchJSON("/map/canada.geojson"),
+        fetchJSON("/map/data.json")
+      ]);
+
+      const sorted = [...dataRaw].sort((a, b) => (b.programs ?? 0) - (a.programs ?? 0));
+      const ranked = dataRaw.map(d => ({ ...d, rank: sorted.findIndex(x => x.province === d.province) + 1 }));
+
+      state.data = ranked;
+      state.geojson = geojson;
+
+      buildStats(ranked);
+      el.refreshed.textContent = new Date().toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" });
+      wireActions(ranked);
+
+      const traces = buildTraces(ranked, geojson);
+      state.traces = traces;
+
+      const layout = {
+        margin: { l: 10, r: 10, t: 0, b: 0 },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        geo: {
+          scope: "north america",
+          projection: { type: "mercator", scale: 3.4 },
+          fitbounds: "locations",
+          showframe: false,
+          showcoastlines: false,
+          showcountries: false,
+          showsubunits: true,
+          subunitcolor: "rgba(255,255,255,0.16)",
+          bgcolor: "rgba(0,0,0,0)",
+          center: { lat: 60.2, lon: -96.5 }
+        },
+        font: { color: "rgba(244,246,251,0.9)", family: "Inter, system-ui" },
+        dragmode: false
+      };
+      state.layout = JSON.parse(JSON.stringify(layout));
+
+      Plotly.newPlot("plot", traces, layout, { displayModeBar: true, responsive: true, modeBarButtonsToRemove: ["pan2d","select2d","lasso2d","autoScale2d"] })
+        .then(() => attachHoverHandlers(ranked))
+        .catch(err => {
+          console.error(err);
+          el.plot.innerHTML = `<div style="padding:16px;color:rgba(255,255,255,0.75)"><b>Map failed to load.</b><br>${err.message}</div>`;
+        });
+    }
+
+    el.modeButtons.forEach(btn => {
+      btn.addEventListener("click", () => updateMode(btn.dataset.mode));
+    });
+
+    render();
+  </script>
+</body>
+</html>

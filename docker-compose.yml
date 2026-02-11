@@ -1,0 +1,61 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: carms_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  dagster:
+    build: .
+    container_name: carms_dagster
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      DAGSTER_HOME: ${DAGSTER_HOME:-/app/.dagster}
+      DB_URL: ${DB_URL}
+      ENV: ${ENV:-local}
+      PYTHONPATH: /app
+    volumes:
+      - .:/app
+    command: dagster dev -h 0.0.0.0 -p 3000 -m carms.pipelines.definitions
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: .
+    container_name: carms_api
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      DB_URL: ${DB_URL}
+      ENV: ${ENV:-local}
+      PYTHONPATH: /app
+    volumes:
+      - .:/app
+    command: uvicorn carms.api.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
