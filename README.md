@@ -29,11 +29,11 @@ An end-to-end, production-style data platform for the public CaRMS residency pro
 ```
 
 ### Data layers
-- bronze_program / bronze_discipline / bronze_description  raw CaRMS extracts as-is.
-- silver_program  cleaned columns, province derivation, quota parsing, validity flags.
-- silver_description_section  unpivoted description text per section.
-- gold_program_profile  curated program metadata plus concatenated descriptions.
-- gold_geo_summary  province x discipline rollups with program counts and avg quota.
+- bronze_program / bronze_discipline / bronze_description — raw CaRMS extracts as-is.
+- silver_program — cleaned columns, province derivation, quota parsing, validity flags.
+- silver_description_section — unpivoted description text per section.
+- gold_program_profile — curated program metadata plus concatenated descriptions.
+- gold_geo_summary — province x discipline rollups with program counts and avg quota.
 
 ### Run it in 10 minutes
 1. `cp .env.example .env`
@@ -44,21 +44,21 @@ An end-to-end, production-style data platform for the public CaRMS residency pro
 ### Endpoints
 | Method | Path | Purpose | Key params |
 |--------|------|---------|------------|
-| GET | `/health` | Liveness |  |
+| GET | `/health` | Liveness | – |
 | GET | `/programs` | List/search programs | discipline, province, school, limit, offset, include_total, preview_chars |
 | GET | `/programs/{program_stream_id}` | Program detail | program_stream_id |
-| GET | `/disciplines` | Active discipline lookup |  |
-| POST | `/pipeline/run` | Trigger Dagster carms_job via GraphQL |  |
-| GET | `/map` | Choropleth HTML |  |
-| GET | `/map/data.json` | Province rollup JSON |  |
-| GET | `/map/canada.geojson` | GeoJSON |  |
+| GET | `/disciplines` | Active discipline lookup | – |
+| POST | `/pipeline/run` | Trigger Dagster carms_job via GraphQL | – |
+| GET | `/map` | Choropleth HTML | – |
+| GET | `/map/data.json` | Province rollup JSON | – |
+| GET | `/map/canada.geojson` | GeoJSON | – |
 
 Security and limits (configurable via `.env`):
 - X-API-Key header enforced when `API_KEY` is set.
 - Rate limit: `RATE_LIMIT_REQUESTS` per `RATE_LIMIT_WINDOW_SEC` (default 120/min per client IP).
 
 ### 5-minute demo script
-1) Open `/docs` and run `GET /programs-province=ON&limit=5` to show filters and pagination.  
+1) Open `/docs` and run `GET /programs?province=ON&limit=5` to show filters and pagination.  
 2) Click `/programs/{id}` for a detail view with full description text.  
 3) In Dagster (`http://localhost:3000`), open job `carms_job` to show the bronze/silver/gold asset graph.  
 4) Open `/map`, toggle choropleth vs bubble, hover a province to show counts and share.  
@@ -73,6 +73,9 @@ Security and limits (configurable via `.env`):
 
 #### Pipelines (Dagster assets)
 ![Dagster](docs/images/dagster-assets.png)
+
+#### Optional: gold tables view
+![Gold tables](docs/images/db-gold-table.png)
 
 
 ### Roadmap
